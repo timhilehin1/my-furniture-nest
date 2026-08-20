@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ProfileService } from './profile.service';
-import { UsersService } from 'src/users/users.service';
 import { UsersModule } from 'src/users/users.module';
 import { ProfileController } from './profile.controller';
 import { JwtConfigModule } from 'src/jwt-config/jwt-config.module';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthModule } from 'src/auth/auth.module';
+
 
 @Module({
-  providers: [ProfileService, AuthGuard],
+  providers: [ProfileService],
   exports: [ProfileService],
-  imports:[UsersModule, JwtConfigModule],
-  controllers:[ProfileController]
+  imports:[UsersModule, JwtConfigModule, AuthModule],
+  controllers:[ProfileController,]
 })
 export class ProfileModule {}
 
