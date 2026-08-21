@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AddCartDto, UpdateCartDto } from 'src/dto/cart';
+import { AddCartDto, UpdateCartDto } from 'src/dto/cart.dto';
 import { MergedItem, UnavaliableItem } from 'src/interface/cart';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SanityService } from 'src/sanity/sanity.service';

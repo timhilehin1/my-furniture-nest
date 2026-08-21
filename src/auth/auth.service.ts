@@ -5,9 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
-import { RegisterDto } from '../dto/register';
+import { RegisterDto } from '../dto/register.dto';
 import * as bcrypt from 'bcrypt';
-import { LoginDto } from '../dto/login';
+import { LoginDto } from '../dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
