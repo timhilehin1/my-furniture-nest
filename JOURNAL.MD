@@ -16,3 +16,7 @@ A module is a department. the painting room has some machines and it decides whi
 controllers are the front counter. they take the order and hand it back and forth, they do not work
 requests are orders going through processes that already exist
 nestFactory.create() is opening day
+
+I have in the ast two days written the endpoint to create an order in the database, I have also written an endpoint to create order count menaing create a table that store the count of items in the order table and each of them linked to the order table
+After that I have also written the code to create the paystack initalize url which will be returned to the frontend. where they now open it. and perform payment, wither by card or transfer. feels good to finally create one of my best pieces of technology myslef. At times it feels like  am late to this thing? AM i? lets see if omwhone watching me in a screen will think I am or not
+payment, inventory, cron job

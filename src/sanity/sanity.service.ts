@@ -30,9 +30,7 @@ export class SanityService {
     } catch (error) {
       console.error('Sanity getProductById error:', error);
 
-      throw new InternalServerErrorException(
-        'Unable to retrieve product',
-      );
+      throw new InternalServerErrorException('Unable to retrieve product');
     }
   }
 
@@ -46,9 +44,7 @@ export class SanityService {
     } catch (error) {
       console.error('Sanity getAllProducts error:', error);
 
-      throw new InternalServerErrorException(
-        'Unable to retrieve products',
-      );
+      throw new InternalServerErrorException('Unable to retrieve products');
     }
   }
 
@@ -69,9 +65,7 @@ export class SanityService {
     } catch (error) {
       console.error('Sanity getAllProductsById error:', error);
 
-      throw new InternalServerErrorException(
-        'Unable to retrieve products',
-      );
+      throw new InternalServerErrorException('Unable to retrieve products');
     }
   }
 }

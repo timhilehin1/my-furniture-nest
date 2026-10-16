@@ -1,3 +1,5 @@
+import { OrderStatus } from "./generated/prisma/enums";
+
 export const PRODUCT_FIELDS = `
   _id,
   productName,
@@ -36,3 +38,11 @@ export const PRODUCT_FIELDS = `
     colorCode
   }
 `;
+
+
+export const ALREADY_PAID: OrderStatus[] = [
+  OrderStatus.PAID,
+  OrderStatus.PROCESSING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+];

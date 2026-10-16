@@ -21,17 +21,13 @@ export class AuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader) {
-      throw new UnauthorizedException(
-        'Authorization header is missing',
-      );
+      throw new UnauthorizedException('Authorization header is missing');
     }
 
     const [scheme, token] = authHeader.split(' ');
 
     if (scheme !== 'Bearer' || !token) {
-      throw new UnauthorizedException(
-        'Invalid authorization header format',
-      );
+      throw new UnauthorizedException('Invalid authorization header format');
     }
 
     try {
@@ -40,9 +36,7 @@ export class AuthGuard implements CanActivate {
       const existingUser = await this.usersService.findById(payload.id);
 
       if (!existingUser) {
-        throw new UnauthorizedException(
-          'Invalid token: user not found',
-        );
+        throw new UnauthorizedException('Invalid token: user not found');
       }
 
       request.user = existingUser;

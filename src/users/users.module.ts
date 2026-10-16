@@ -3,6 +3,6 @@ import { UsersService } from './users.service';
 
 @Module({
   providers: [UsersService], //users modules owns and manages usersService
-    exports:[UsersService] //users service allows other modules to use userservice
+  exports: [UsersService], //users service allows other modules to use userservice
 })
 export class UsersModule {}

@@ -30,6 +30,13 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum PaymentStatus {
+SUCCESS
+FAILED
+REFUND_REQUIRED
+REFUNDED
+}
+
 model User {
   id        String   @id @default(cuid())
   firstName String
@@ -67,18 +74,20 @@ model Order {
   subtotal   Int
   total      Int
   orderItems OrderItem[]
-
+  payments   Payment[]
   // Snapshot of delivery details at the time the order was placed.
   // Deliberately copied, not related, so later profile edits don't rewrite history.
   shippingAddress String
   shippingCity    String
   shippingState   String
   shippingCountry String
+  shippingZipcode String?
   phone           String
   email           String
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) 
   updatedAt DateTime @updatedAt
+  expiresAt DateTime?
 }
 
 model OrderItem {
@@ -95,3 +104,27 @@ model OrderItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model Inventory {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reserved  Int     @default(0)
+  sold      Int     @default(0)
+  quantity  Int      @default(0)
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id])
+  paystackReference String   @unique
+  amount            Int
+  status            PaymentStatus
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  note              String?
+}
+
+
