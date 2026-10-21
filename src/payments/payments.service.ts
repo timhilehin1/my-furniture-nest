@@ -97,7 +97,9 @@ export class PaymentsService {
     if (order.status !== OrderStatus.PENDING) {
       //paid already, dont bother
       //consider every other status as a refund required becuase customer hasnt gotten value and paystack has charged them, so we need to refund them
-      if (ALREADY_PAID.includes(order.status)) return { received: true };
+      if (ALREADY_PAID.includes(order.status)) {
+        return { received: true };
+      }
       await this.recordPaymentNeedingRefund(
         order.id,
         reference,

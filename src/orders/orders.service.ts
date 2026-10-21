@@ -7,16 +7,18 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CartService } from 'src/cart/cart.service';
+import { ORDER_STATUS_RESPONSES, REFUND_PENDING_RESPONSE } from 'src/constant';
 import { CheckoutDto } from 'src/dto/order.dto';
-import { OrderStatus } from 'src/generated/prisma/browser';
+import { OrderStatus, PaymentStatus } from 'src/generated/prisma/browser';
 import { PrismaService } from 'src/prisma/prisma.service';
+
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
-        private readonly configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createOrder(userId: string, data: CheckoutDto) {
@@ -47,19 +49,21 @@ export class OrdersService {
 
     //use a transaction that acceps a callback to ccreate an atomic operation either everything goes or nothing goes at all, that is why we wrapped the order creation and orderItem creation in a transaction, so if one fails the other will not be created
     const newOrder = await this.prisma.$transaction(async (tx) => {
-    //check if item exists, reserve an item and reduce quantity so users don't pay for an item that is out of stock
-       for (const item of cart.items){
+      //check if item exists, reserve an item and reduce quantity so users don't pay for an item that is out of stock
+      for (const item of cart.items) {
         const reservedRows = await tx.$executeRaw`
         UPDATE "Inventory"
         SET reserved = reserved + ${item.quantity}
         WHERE "productId" = ${item.productId}
         AND quantity - reserved - sold >= ${item.quantity}
         `;
-        if(reservedRows === 0){
-            throw new BadRequestException(`${item.productName} is out of stock`)
+        if (reservedRows === 0) {
+          throw new BadRequestException(`${item.productName} is out of stock`);
         }
-       }
-       const expiryMinutes = Number(this.configService.get('ORDER_EXPIRY_MINUTES'));
+      }
+      const expiryMinutes = Number(
+        this.configService.get('ORDER_EXPIRY_MINUTES'),
+      );
 
       // create an order in the order table with the details from the checkout dto and the subtotal from the cart
       const createdOrder = await tx.order.create({
@@ -87,7 +91,6 @@ export class OrdersService {
         productName: item.productName ?? '',
         imageUrl: item.imageUrl,
         lineTotal: item.lineTotal,
-    
       }));
 
       // create order items
@@ -104,9 +107,37 @@ export class OrdersService {
     });
     return newOrder;
   }
+
+  async getOrderStatus(userId: string, orderId: string) {
+    //check if user is allow to check status of this order and set query to return only status
+    const existingOrder = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId,
+      },
+      select: {
+        status: true,
+        payments: {
+          select: { status: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    if (!existingOrder) {
+      throw new NotFoundException('Order not found');
+    }
+    const paymentStatus = existingOrder.payments[0]?.status;
+    const response =
+      paymentStatus === PaymentStatus.REFUND_REQUIRED
+        ? REFUND_PENDING_RESPONSE
+        : ORDER_STATUS_RESPONSES[existingOrder.status];
+    return { status: existingOrder.status, ...response };
+
+  }
+
   @Cron(CronExpression.EVERY_MINUTE)
   async releaseExpiredOrders() {
-    
     const expiredOrders = await this.prisma.order.findMany({
       where: {
         status: OrderStatus.PENDING,
@@ -145,6 +176,4 @@ export class OrdersService {
       });
     }
   }
-
-  
 }

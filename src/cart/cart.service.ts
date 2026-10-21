@@ -51,6 +51,7 @@ export class CartService {
     });
   }
 
+  //cart helper, helps get prduct metadata from sanity
   async buildCart(userId: string) {
     const cartItems = await this.prisma.cart.findMany({
       where: {
