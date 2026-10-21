@@ -39,6 +39,7 @@ export class OrdersService {
       where: {
         userId,
         status: OrderStatus.PENDING,
+        expiresAt: { gt: new Date() },
       },
     });
     if (existingOrder) {
