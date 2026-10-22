@@ -3,10 +3,10 @@ import { AppModule } from './app.module';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use('/payments/webhook', express.raw({ type: 'application/json' }));
+  app.setGlobalPrefix('api/v1');  
+  app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }));
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
