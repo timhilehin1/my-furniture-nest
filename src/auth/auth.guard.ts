@@ -33,6 +33,11 @@ export class AuthGuard implements CanActivate {
     try {
       const payload = this.jwtService.verify<AccessTokenPayload>(token);
 
+      // refresh tokens share the signing secret, so reject them explicitly here
+      if (payload.type === 'refresh') {
+        throw new UnauthorizedException('Invalid token');
+      }
+
       const existingUser = await this.usersService.findById(payload.id);
 
       if (!existingUser) {

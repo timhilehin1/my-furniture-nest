@@ -3,12 +3,14 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from '../dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from '../dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
+import { AccessTokenPayload } from 'src/interface/token';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +28,7 @@ export class AuthService {
       ...data,
       password: hashedPassword,
     });
-    return user;
+    return { ...user, ...this.generateTokens(user.id) };
   }
 
   async login(data: LoginDto) {
@@ -40,13 +42,36 @@ export class AuthService {
     if (!isMatch) {
       throw new BadRequestException('Email or password incorrect');
     }
-    const accessToken = this.jwtService.sign({ id: existingUser.id });
+    const { password, ...user } = existingUser;
+    return { ...user, ...this.generateTokens(user.id) };
+  }
+
+  async refresh(refreshToken: string) {
+    let payload: AccessTokenPayload;
+    try {
+      payload = this.jwtService.verify<AccessTokenPayload>(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const user = await this.usersService.findById(payload.id);
+    if (!user) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    return this.generateTokens(user.id);
+  }
+
+  private generateTokens(userId: string) {
+    const accessToken = this.jwtService.sign({ id: userId });
     const refreshToken = this.jwtService.sign(
-      { id: existingUser.id, type: 'refresh' },
+      { id: userId, type: 'refresh' },
       { expiresIn: '7d' },
     );
-    const { password, ...user } = existingUser;
-
-    return { ...user, accessToken, refreshToken };
+    return { accessToken, refreshToken };
   }
 }
