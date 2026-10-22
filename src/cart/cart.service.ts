@@ -37,7 +37,7 @@ export class CartService {
         },
         data: {
           quantity: {
-            increment: 1,
+            increment: quantity ?? 1,
           },
         },
       });
