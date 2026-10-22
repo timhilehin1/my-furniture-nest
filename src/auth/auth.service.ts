@@ -30,7 +30,9 @@ export class AuthService {
   }
 
   async login(data: LoginDto) {
-    const existingUser = await this.usersService.findByEmail(data.email);
+    const existingUser = await this.usersService.findByEmailWithPassword(
+      data.email,
+    );
     if (!existingUser) {
       throw new BadRequestException('Email or password incorrect');
     }
@@ -45,10 +47,6 @@ export class AuthService {
     );
     const { password, ...user } = existingUser;
 
-    return {
-      ...user,
-      accessToken,
-      refreshToken,
-    };
+    return { ...user, accessToken, refreshToken };
   }
 }

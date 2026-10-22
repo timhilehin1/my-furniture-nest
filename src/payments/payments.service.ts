@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ALREADY_PAID } from 'src/constant';
 import { Prisma } from 'src/generated/prisma/client';
@@ -6,6 +6,7 @@ import { OrderStatus, PaymentStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -31,6 +32,7 @@ export class PaymentsService {
     const total = order.total * 100;
     const paystackSecretKey = this.configService.get('PAYSTACK_SECRET_KEY');
     const paystackBaseUrl = this.configService.get('PAYSTACK_BASE_URL');
+    const paystackCallbackUrl = this.configService.get('PAYSTACK_CALLBACK_URL');
     const headers = {
       Authorization: `Bearer ${paystackSecretKey}`,
       'Content-Type': 'application/json',
@@ -45,6 +47,7 @@ export class PaymentsService {
           currency: 'NGN',
           reference: orderId,
           email: order.email,
+          callback_url: paystackCallbackUrl
         }),
       },
     );
@@ -77,10 +80,9 @@ export class PaymentsService {
       reference.length === 0 ||
       !Number.isInteger(amount)
     ) {
-      console.error('Malformed Paystack webhook payload', {
-        reference,
-        amount,
-      });
+      this.logger.error(
+        `Malformed Paystack webhook payload: ${JSON.stringify({ reference, amount })}`,
+      );
       return { received: true };
     }
     // fetch order with its items, if order is not found, early return
@@ -214,7 +216,7 @@ export class PaymentsService {
       throw err;
     }
 
-    console.error(
+    this.logger.error(
       `REFUND NEEDED: order ${orderId}, reference ${reference}: ${note}`,
     );
   }

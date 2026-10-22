@@ -7,6 +7,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor(config: ConfigService) {
     super({
       adapter: new PrismaPg({ connectionString: config.get('DATABASE_URL') }),
+      omit: { user: { password: true } },
     });
   }
   async onModuleInit() {

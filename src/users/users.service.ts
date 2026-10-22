@@ -7,6 +7,12 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
   }
+  async findByEmailWithPassword(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      omit: { password: false },
+    });
+  }
   async findById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
   }

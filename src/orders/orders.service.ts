@@ -2,19 +2,22 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CartService } from 'src/cart/cart.service';
-import { ORDER_STATUS_RESPONSES, REFUND_PENDING_RESPONSE } from 'src/constant';
+import { EVERY_15_MINUTES, ORDER_STATUS_RESPONSES, REFUND_PENDING_RESPONSE } from 'src/constant';
 import { CheckoutDto } from 'src/dto/order.dto';
+import { Prisma } from 'src/generated/prisma/client';
 import { OrderStatus, PaymentStatus } from 'src/generated/prisma/browser';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
@@ -43,13 +46,28 @@ export class OrdersService {
       },
     });
     if (existingOrder) {
-      throw new ConflictException(
-        `An existing pending order already exists for this user`,
-      );
+      throw new ConflictException({
+        message: 'An existing pending order already exists for this user',
+        orderId: existingOrder.id,
+        expiresAt: existingOrder.expiresAt,
+      });
     }
 
     //use a transaction that acceps a callback to ccreate an atomic operation either everything goes or nothing goes at all, that is why we wrapped the order creation and orderItem creation in a transaction, so if one fails the other will not be created
     const newOrder = await this.prisma.$transaction(async (tx) => {
+      // expire this user's stale pending order inline so the one-pending-order index can't fail before the cron runs
+      const staleOrder = await tx.order.findFirst({
+        where: {
+          userId,
+          status: OrderStatus.PENDING,
+          expiresAt: { lte: new Date() },
+        },
+        include: { orderItems: true },
+      });
+      if (staleOrder) {
+        await this.expireOrder(tx, staleOrder);
+      }
+
       //check if item exists, reserve an item and reduce quantity so users don't pay for an item that is out of stock
       for (const item of cart.items) {
         const reservedRows = await tx.$executeRaw`
@@ -137,7 +155,7 @@ export class OrdersService {
 
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(EVERY_15_MINUTES)
   async releaseExpiredOrders() {
     const expiredOrders = await this.prisma.order.findMany({
       where: {
@@ -147,34 +165,36 @@ export class OrdersService {
       include: { orderItems: true },
       take: 100,
     });
-    console.log('expired orders:', expiredOrders.length);
+    this.logger.log(`expired orders: ${expiredOrders.length}`);
 
     for (const order of expiredOrders) {
-      await this.prisma.$transaction(async (tx) => {
-        const expiredResult = await tx.order.updateMany({
-          where: {
-            id: order.id,
-            status: OrderStatus.PENDING,
-          },
-          data: {
-            status: OrderStatus.EXPIRED,
-          },
-        });
+      await this.prisma.$transaction((tx) => this.expireOrder(tx, order));
+    }
+  }
 
-        if (expiredResult.count === 0) return;
+  private async expireOrder(
+    tx: Prisma.TransactionClient,
+    order: {
+      id: string;
+      orderItems: { productId: string; quantity: number }[];
+    },
+  ) {
+    const expiredResult = await tx.order.updateMany({
+      where: { id: order.id, status: OrderStatus.PENDING },
+      data: { status: OrderStatus.EXPIRED },
+    });
+    if (expiredResult.count === 0) return;
 
-        for (const item of order.orderItems) {
-          await tx.inventory.updateMany({
-            where: {
-              productId: item.productId,
-              reserved: { gte: item.quantity },
-            },
-            data: {
-              reserved: { decrement: item.quantity },
-            },
-          });
-        }
+    for (const item of order.orderItems) {
+      const released = await tx.inventory.updateMany({
+        where: { productId: item.productId, reserved: { gte: item.quantity } },
+        data: { reserved: { decrement: item.quantity } },
       });
+      if (released.count === 0) {
+        this.logger.warn(
+          `Could not release ${item.quantity} reserved for product ${item.productId} (order ${order.id})`,
+        );
+      }
     }
   }
 }

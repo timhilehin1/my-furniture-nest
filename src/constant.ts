@@ -80,3 +80,4 @@ export const REFUND_PENDING_RESPONSE: StatusResponse = {
     'Your payment arrived after the order closed. A refund is being processed.',
   isFinal: true,
 };
+export const EVERY_15_MINUTES = '0 */15 * * * *';

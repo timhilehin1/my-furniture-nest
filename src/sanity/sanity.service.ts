@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   InternalServerErrorException,
 } from '@nestjs/common';
 import type { SanityClient } from '@sanity/client';
@@ -10,6 +11,7 @@ import { Product } from 'src/interface/product';
 
 @Injectable()
 export class SanityService {
+  private readonly logger = new Logger(SanityService.name);
   constructor(
     @Inject('SANITY_CLIENT')
     private readonly client: SanityClient,
@@ -28,7 +30,10 @@ export class SanityService {
         { id },
       );
     } catch (error) {
-      console.error('Sanity getProductById error:', error);
+      this.logger.error(
+        `Sanity getProductById error: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
 
       throw new InternalServerErrorException('Unable to retrieve product');
     }
@@ -42,7 +47,10 @@ export class SanityService {
         }
       `);
     } catch (error) {
-      console.error('Sanity getAllProducts error:', error);
+      this.logger.error(
+        `Sanity getAllProducts error: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
 
       throw new InternalServerErrorException('Unable to retrieve products');
     }
@@ -63,7 +71,10 @@ export class SanityService {
         { ids },
       );
     } catch (error) {
-      console.error('Sanity getAllProductsById error:', error);
+      this.logger.error(
+        `Sanity getAllProductsById error: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
 
       throw new InternalServerErrorException('Unable to retrieve products');
     }

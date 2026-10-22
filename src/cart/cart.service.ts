@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { AddCartDto, UpdateCartDto } from 'src/dto/cart.dto';
@@ -10,6 +11,7 @@ import { SanityService } from 'src/sanity/sanity.service';
 
 @Injectable()
 export class CartService {
+  private readonly logger = new Logger(CartService.name);
   constructor(
     private readonly sanity: SanityService,
     private readonly prisma: PrismaService,
@@ -80,7 +82,7 @@ export class CartService {
       }
       let unitPrice: number;
       if (product.discountStatus && product.discountPrice === undefined) {
-        console.warn(
+        this.logger.warn(
           `Product ${product._id} has a discount status of true with a discount price of ${product.discountPrice}`,
         );
       }
@@ -150,10 +152,6 @@ export class CartService {
   }
 
   async deleteSingleCartItem(productId: string, userId: string) {
-    const product = await this.sanity.getProductById(productId);
-    if (!product) {
-      throw new NotFoundException(`Product ${productId} not found.`);
-    }
     const existingItem = await this.prisma.cart.findUnique({
       where: {
         userId_productId: {
@@ -163,7 +161,7 @@ export class CartService {
       },
     });
     if (!existingItem) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Item not in cart');
     }
     return this.prisma.cart.delete({
       where: {

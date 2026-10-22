@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
 
@@ -10,6 +10,12 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
+      exceptionFactory: (errors) => {
+        const first = errors[0];
+        const message =
+          Object.values(first.constraints ?? {})[0] ?? 'Invalid input';
+        return new BadRequestException(message);
+      },
     }),
   );
   app.enableCors();
