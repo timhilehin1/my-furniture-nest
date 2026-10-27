@@ -6,11 +6,12 @@ import {
   Request,
   Get,
   Param,
+  Query 
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { OrdersService } from './orders.service';
-import { CheckoutDto } from 'src/dto/order.dto';
+import { CheckoutDto, GetOrdersQueryDto } from 'src/dto/order.dto';
 @ApiBearerAuth()
 @ApiTags('orders')
 @Controller('orders')
@@ -25,5 +26,10 @@ export class OrdersController {
   @Get(':id/status')
   getOrderStatus(@Param('id') id: string, @Request() request: any) {
     return this.ordersService.getOrderStatus(request.user.id, id);
+  }
+
+  @Get()
+  getOrders(@Query() query:GetOrdersQueryDto, @Request() request: any){
+    return this.ordersService.getOrders(query, request.user.id);
   }
 }

@@ -8,12 +8,15 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CartService } from 'src/cart/cart.service';
-import { EVERY_15_MINUTES, ORDER_STATUS_RESPONSES, REFUND_PENDING_RESPONSE } from 'src/constant';
-import { CheckoutDto } from 'src/dto/order.dto';
+import {
+  EVERY_15_MINUTES,
+  ORDER_STATUS_RESPONSES,
+  REFUND_PENDING_RESPONSE,
+} from 'src/constant';
+import { CheckoutDto, GetOrdersQueryDto } from 'src/dto/order.dto';
 import { Prisma } from 'src/generated/prisma/client';
 import { OrderStatus, PaymentStatus } from 'src/generated/prisma/browser';
 import { PrismaService } from 'src/prisma/prisma.service';
-
 
 @Injectable()
 export class OrdersService {
@@ -152,7 +155,63 @@ export class OrdersService {
         ? REFUND_PENDING_RESPONSE
         : ORDER_STATUS_RESPONSES[existingOrder.status];
     return { status: existingOrder.status, ...response };
+  }
 
+  async getOrders(query: GetOrdersQueryDto, userId: string) {
+    // prisma  uses take and skip for its pagination
+    // our parameter is limit and page
+    //so when i pass limit. I am telling the server the amount of rows I want
+    // when i pass page, it is returnning the order based on the limit
+    // page 1, limit 2 means break all items into 2 items per group and the page returns the order
+    // page 0 limit 10 will throw an error becuase page must be at least 1
+    //page 2 limit 2 means give me 2 items but on the second grup, meaning if we have 5 titems, I will get 2 items
+    //page 5 limit 10. will go to the 5th group and give me the 10 items in that group. skipping 40
+    const where = { userId, status:query.status };
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: query.limit,
+        skip: (query.page - 1) * query.limit,
+        select: {
+          id: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          shippingAddress: true,
+          shippingCity: true,
+          shippingState: true,
+          shippingCountry: true,
+          orderItems: {
+            select: {
+              productName: true,
+              imageUrl: true,
+              quantity: true,
+              lineTotal: true,
+            },
+          },
+          payments: {
+            select: { status: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+    const data = orders.map(({payments, ...order})=>({
+      ...order,
+      paymentStatus: payments[0]?.status ?? null,
+    }))
+    return {
+      data,
+      meta: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
+    };
   }
 
   @Cron(EVERY_15_MINUTES)
